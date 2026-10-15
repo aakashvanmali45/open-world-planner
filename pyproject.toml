@@ -1,0 +1,21 @@
+[project]
+name = "open-world-explorer"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "aakashvanmali45", email = "aakashvanmali05@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.5.4",
+    "opencv-python>=5.0.0.93",
+    "pytest>=9.1.1",
+    "pyyaml>=6.0.3",
+]
+
+[project.scripts]
+open-world-explorer = "open_world_explorer:main"
+
+[build-system]
+requires = ["uv_build>=0.12.8,<0.13.0"]
+build-backend = "uv_build"
