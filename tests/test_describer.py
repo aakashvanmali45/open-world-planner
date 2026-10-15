@@ -15,9 +15,9 @@ def _ollama_ready(model="gemma3:4b"):
 
 pytestmark = pytest.mark.skipif(not _ollama_ready(), reason="Ollama/gemma3:4b not available")
 
-SAMPLE = os.path.join(os.path.dirname(__file__), "data", "sample.jpg")
+SAMPLE = os.path.join(os.path.dirname(__file__), "data", "sample.jpeg")
 
-@pytest.mark.skipif(not os.path.exists(SAMPLE), reason="no sample.jpg")
+@pytest.mark.skipif(not os.path.exists(SAMPLE), reason="no sample.jpeg")
 def test_describe_returns_parsed_json():
     from perception.detector import Detector
     det = Detector(); det.set_vocabulary(["bottle", "mug", "cup", "book"])
