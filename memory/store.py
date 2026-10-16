@@ -81,6 +81,15 @@ class MemoryStore:
         for p in points:
             self._index_add(np.asarray(p.vector, dtype = np.float32), Prototype(**p.payload))
 
+    def _ensure_shared_collection(self):
+        """Create the collection on the shared server if it isn't there yet."""
+        from qdrant_client.models import Distance, VectorParams
+        if not self._shared.collection_exists(self._collection):
+            self._shared.create_collection(
+                self._collection,
+                vectors_config = VectorParams(size=self.dim, distance = Distance.COSINE)
+            )
+
     ##### Public API #####
 
     def add(self, vector, **kwargs) -> str: 
@@ -106,8 +115,49 @@ class MemoryStore:
         return self._payloads.get(object_id)
 
     def sync(self):
-        """Tier-3 background push/pull. Implemented once Docker + shared server are up."""
-        raise NotImplementedError("Shared sync lands after Docker setup (Phase 0, step 2b)")
+        """Background-safe push/pull with the shared server. NEVER on the match() path.
+        Push: upsert all local prototypes to the shared server.
+        Pull: fetch shared prototypes this robot doesn't have, add them to
+              local persistence + the in-memory index.
+        Returns (pushed, pulled) counts."""
 
+        if self._shared is None:
+            raise RuntimeError("no shared_url configured, needs a shared server")
+        from qdrant_client.models import PointStruct
+
+        self._ensure_shared_collection()
+
+        with self._lock:
+            local_ids = set(self._ids)
+
+            # Pushing everything we know
+            points = []
+            for oid in self._ids:
+                idx = self._ids.index(oid)
+                vec = self._vecs[idx].tolist()
+                points.append(PointStruct(
+                    id=oid, vector=vec, payload=asdict(self._payloads[oid])
+                ))
+
+            if points:
+                self._shared.upsert(self._collection, points=points)
+            pushed = len(points)
+
+        remote, _ = self._shared.scroll(
+            self._collection, limit = 100000, with_vectors = True)
+
+        pulled = 0
+        for p in remote:
+            if p.id in local_ids:
+                continue
+
+            proto = Prototype(**p.payload)
+            vec = np.asarray(p.vector, dtype = np.float32)
+            with self._lock:
+                self._index_add(vec, proto)
+                self._upsert_local(vec, proto)
+            pulled += 1
+
+        return pushed, pulled
     def close(self):
         self._local.close()
