@@ -1,0 +1,28 @@
+crop_id,latency_ms,raw
+0,9842,"```json
+{
+  ""candidate_labels"": [""mug"", ""ceramic cup"", ""white mug"", ""coffee cup""],
+  ""category"": ""utensil"",
+  ""color"": ""white"",
+  ""material"": ""ceramic"",
+  ""features"": [""smooth surface"", ""handle on one side"", ""empty""]
+}
+```"
+1,9766,"```json
+{
+  ""candidate_labels"": [""water bottle"", ""plastic bottle"", ""blue bottle"", ""reusable bottle"", ""drinking container""],
+  ""category"": ""container"",
+  ""color"": ""blue"",
+  ""material"": ""plastic"",
+  ""features"": [""transparent"", ""wide mouth"", ""geometric pattern""]
+}
+```"
+2,8307,"```json
+{
+  ""candidate_labels"": [""book"", ""brown book"", ""closed book""],
+  ""category"": ""stationery"",
+  ""color"": ""brown"",
+  ""material"": ""paper"",
+  ""features"": [""closed"", ""hardcover""]
+}
+```"
