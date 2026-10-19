@@ -17,3 +17,5 @@ Roadmap/
 memory_data/
 weights/
 qdrant_storage/
+data/
+outputs/

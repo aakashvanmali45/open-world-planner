@@ -29,7 +29,7 @@ Describe the object in the image"""
 class Describer: 
     """The VLM describes the Novel object"""
 
-    def __init__(self, model: str = "gemma3:4B", host: Optional[str] = None):
+    def __init__(self, model: str = "gemma3:4b", host: Optional[str] = None):
         import ollama
         self.model = model
         self.client = ollama.Client(host = host) if host else ollama.Client()

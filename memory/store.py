@@ -111,6 +111,23 @@ class MemoryStore:
             order = np.argsort(-sims)[:top_k]
             return [(self._ids[i], float(sims[i]), self._payloads[self._ids[i]]) for i in order ]
 
+    def update(self, object_id, vector=None, **fields) -> bool:
+        """Merge fields into an existing prototype (optionally replace its vector).
+        Thread-safe. Used to backfill the VLM label (provisional -> named) and
+        to persist count/last_seen changes to tier-2."""
+        with self._lock:
+            proto = self._payloads.get(object_id)
+            if proto is None:
+                return False
+            for k, v in fields.items():
+                setattr(proto, k, v)
+            proto.last_seen = time.time()
+            idx = self._ids.index(object_id)
+            if vector is not None:
+                self._vecs[idx] = self._norm(vector)
+            self._upsert_local(self._vecs[idx], proto)
+        return True
+
     def get(self, object_id: str) -> Optional[Prototype]:
         return self._payloads.get(object_id)
 
