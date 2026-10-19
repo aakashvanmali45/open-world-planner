@@ -22,6 +22,7 @@ from perception.describer import Describer
 from perception.vlm_worker import VLMWorker
 from perception.loop import PerceptionLoop
 from memory.store import MemoryStore
+from perception.masker import Masker
 
 FEED_W = 960                      # feed scaled to this width
 PANEL_W = 520
@@ -63,6 +64,8 @@ def main():
     ap.add_argument("--proc-fps", type=float, default=3.0)
     ap.add_argument("--conf", type=float, default=0.1)
     ap.add_argument("--thresh", type=float, default=0.80)
+    ap.add_argument("--mask", action="store_true", help="FastSAM background masking before embed")
+    ap.add_argument("--mask-model", default="weights/FastSAM-s.pt")
     ap.add_argument("--beat", type=int, default=5, help="frames to show 'describing...'")
     ap.add_argument("--mem", default="memory_data/demo")
     ap.add_argument("--out", default="outputs/demo_hud.mp4")
@@ -71,7 +74,9 @@ def main():
     store = MemoryStore(local_path=args.mem)
     detector = Detector(backend="yoloe"); detector.min_conf = args.conf
     worker = VLMWorker(Describer(), store)
-    loop = PerceptionLoop(detector, Tracker(), Recognizer(Embedder(), store, threshold=args.thresh),
+    masker = Masker(model_path=args.mask_model, device="cpu") if args.mask else None
+    loop = PerceptionLoop(detector, Tracker(),
+                          Recognizer(Embedder(), store, threshold=args.thresh, masker=masker),
                           vlm_worker=worker)
 
     # ---------- PASS 1: process + collect ----------

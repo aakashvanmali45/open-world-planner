@@ -45,3 +45,21 @@ def test_near_object_recognized(rec):
     rec.recognize(np.array([1, 0, 0, 0], np.float32))
     r = rec.recognize(np.array([0.95, 0.05, 0, 0], np.float32))  # sim ~0.998 >= 0.8
     assert r.status == "known"
+
+def test_borderline_match_adds_view(rec):
+    rec.recognize(np.array([1, 0, 0, 0], np.float32))              # learn it
+    oid = rec.store.match(np.array([1, 0, 0, 0], np.float32))[0][0]
+    assert rec.store.view_count(oid) == 1
+    # sim == 0.85: clearly known, but borderline -> a new view is stored
+    r = rec.recognize(np.array([0.85, 0.5268, 0, 0], np.float32))
+    assert r.status == "known"
+    assert r.object_id == oid
+    assert rec.store.view_count(oid) == 2
+
+def test_strong_match_adds_no_view(rec):
+    rec.recognize(np.array([1, 0, 0, 0], np.float32))
+    oid = rec.store.match(np.array([1, 0, 0, 0], np.float32))[0][0]
+    r = rec.recognize(np.array([0.99, 0.01, 0, 0], np.float32))    # sim ~1.0 >= ceiling
+    assert r.status == "known"
+    assert rec.store.view_count(oid) == 1                          # nothing added
+    assert r.prototype.observation_count == 2                      # count still bumped

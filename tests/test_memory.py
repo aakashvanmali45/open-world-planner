@@ -44,6 +44,50 @@ def _shared_up(url = "http://localhost:6333"):
     except Exception:
         return False
 
+def test_add_view_nearest_of_any(tmp_path):
+    store = MemoryStore(dim=4, local_path=str(tmp_path / "m"))
+    e0 = np.array([1, 0, 0, 0], np.float32)
+    e1 = np.array([0, 1, 0, 0], np.float32)           # a very different "angle"
+    oid = store.add(e0, canonical_label="A")
+    assert store.add_view(oid, e1)
+    assert store.view_count(oid) == 2
+    # a query near EITHER stored view resolves to the same object
+    assert store.match(e0, top_k=1)[0][0] == oid
+    assert store.match(e1, top_k=1)[0][0] == oid
+    store.close()
+
+def test_match_returns_distinct_objects(tmp_path):
+    store = MemoryStore(dim=4, local_path=str(tmp_path / "m"))
+    a = store.add(np.array([1, 0, 0, 0], np.float32), canonical_label="A")
+    store.add_view(a, np.array([0.9, 0.1, 0, 0], np.float32))   # 2 views of A
+    b = store.add(np.array([0, 1, 0, 0], np.float32), canonical_label="B")
+    res = store.match(np.array([1, 0, 0, 0], np.float32), top_k=2)
+    ids = [r[0] for r in res]
+    assert ids[0] == a
+    assert set(ids) == {a, b}          # distinct objects, not two views of A
+    store.close()
+
+def test_view_cap_evicts(tmp_path):
+    store = MemoryStore(dim=4, local_path=str(tmp_path / "m"))
+    oid = store.add(np.array([1, 0, 0, 0], np.float32), canonical_label="A")
+    for k in range(10):
+        store.add_view(oid, np.array([1.0, 0.01 * k, 0, 0], np.float32), max_views=4)
+    assert store.view_count(oid) == 4      # capped, not 11
+    store.close()
+
+def test_multiview_survives_restart(tmp_path):
+    path = str(tmp_path / "m")
+    store = MemoryStore(dim=4, local_path=path)
+    e0 = np.array([1, 0, 0, 0], np.float32)
+    e1 = np.array([0, 0, 1, 0], np.float32)
+    oid = store.add(e0, canonical_label="valve")
+    store.add_view(oid, e1)
+    store.close()
+    store2 = MemoryStore(dim=4, local_path=path)       # reopen: regroup views by object
+    assert store2.view_count(oid) == 2
+    assert store2.match(e1, top_k=1)[0][0] == oid
+    store2.close()
+
 @pytest.mark.skipif(not _shared_up(), reason = "shared Qdrant (docker) not running")
 def test_sync_roundtrip(tmp_path):
     """Robot A learns an object, pushes to shared; a fresh client B pulls it
